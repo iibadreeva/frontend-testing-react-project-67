@@ -6,7 +6,9 @@
   "scripts": {
     "test": "npx jest",
     "test:debug": "DEBUG=nock.* npx jest",
-    "lint": "eslint"
+    "lint": "eslint",
+    "start:win": "node bin/page-loader.js page-loader -o page https://ru.hexlet.io/courses",
+    "start:lin": "node .\\bin\\page-loader.js page-loader -o page https://ru.hexlet.io/courses"
   },
   "repository": {
     "type": "git",
