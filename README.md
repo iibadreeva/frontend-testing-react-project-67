@@ -13,8 +13,3 @@
 - Тесты должны быть изолированы друг от друга. Для этого каждая загрузка должна выполняться в своей временной директории: await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-')); (в хуке beforeEach())
 - Для общего кода в тестах (особенно с побочными эффектами) используются хуки beforeAll() и beforeEach()
 - Тестировать работу через cli не нужно
-
-## https://github.com/rinAkhm/frontend-testing-react-project-67
-
-## https://github.com/Abra19/frontend-testing-react-project-67
-https://github.com/rinAkhm/frontend-testing-react-project-67
