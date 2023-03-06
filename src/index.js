@@ -1,90 +1,95 @@
-import * as fsp from 'fs/promises';
-import { URL } from 'url';
-import path from 'path';
+import { promises as fs } from 'fs';
 import axios from 'axios';
-import debug from 'debug';
-import * as cheerio from 'cheerio';
+import { URL } from 'url';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Listr from 'listr';
-
-import { makeName, makeFileName } from './utils.js';
-
-const tags = {
-  img: 'src',
-  link: 'href',
-  script: 'src',
-};
+import _ from 'lodash';
+import path from 'path';
+import cheerio from 'cheerio';
+import debug from 'debug';
+import { prepareName, processName } from './helper.js';
 
 const log = debug('page-loader');
+const date = () => new Date().toISOString();
 
-const makeLinks = (data, url, dir) => {
-  const $ = cheerio.load(data);
-  const localLinks = [];
-  Object.entries(tags).forEach(([tag, attr]) => {
-    const tagEls = [...$(tag)];
-    const tagLocalLinks = tagEls
-      .filter((el) => $(el).attr(attr))
-      .map((el) => {
-        const fileUrl = new URL($(el).attr(attr), url.origin);
-        return { el, fileUrl };
-      })
-      .filter(({ fileUrl }) => fileUrl.origin === url.origin);
+const attributeMapping = [
+  {
+    tag: 'link',
+    attr: 'href',
+  },
+  {
+    tag: 'script',
+    attr: 'src',
+  },
+  {
+    tag: 'img',
+    attr: 'src',
+  },
+];
 
-    tagLocalLinks.forEach(({ el, fileUrl }) => {
-      const fileName = makeFileName(fileUrl);
-      localLinks.push({ fileName, fileUrl });
-      $(el).attr(attr, `${dir}/${fileName}`);
+const prepareData = (website, folder, html) => {
+  const rez = [];
+  const $ = cheerio.load(html, { decodeEntities: false });
+  // пербор элеметов из запроса с фильтарицей
+  attributeMapping.forEach((item) => {
+    const listElements = $(item.tag).toArray();
+    const items = listElements
+      .map((element) => $(element))
+      .filter((element) => element.attr(item.attr))
+      .map((args) => ({
+        args,
+        url: new URL(args.attr(item.attr), website),
+      }))
+      .filter(({ url }) => url.origin === website.origin);
+    // Заменяем html
+    items.forEach(({ args, url }) => {
+      const slug = processName(`${url.hostname}${url.pathname}`);
+      args.attr(item.attr, path.join(folder, slug));
+      rez.push({ url, slug });
     });
   });
 
-  return { html: $.html(), localLinks };
+  return { html: $.html(), items: rez };
 };
 
-const handleLinks = (links, filesDirPath) => {
-  const tasks = links.map((link) => {
-    const url = link.fileUrl.toString();
-    const filePath = path.join(filesDirPath, link.fileName);
-    return {
-      title: `Downloading - ${url}`,
-      task: () =>
-        axios
-          .get(url, { responseType: 'arraybuffer' })
-          .then(({ data }) => fsp.writeFile(filePath, data)),
-    };
-  });
+const downloadData = (dirname, { url, slug }) =>
+  axios
+    .get(url.toString(), { responseType: 'arraybuffer' })
+    .then((response) => {
+      const fullPath = path.join(dirname, slug);
+      return fs.writeFile(fullPath, response.data);
+    });
 
-  return new Listr(tasks, { concurrent: true });
-};
+const pageLoader = async (pageUrl, outputDirname = '') => {
+  log(`[${date()}] Inputed url ${pageUrl}`);
+  log(`[${date()}] Inputed pathFolder ${outputDirname}`);
+  const url = new URL(pageUrl);
+  const slug = `${url.hostname}${url.pathname}`;
+  const mainFile = processName(slug);
+  const dirname = path.resolve(process.cwd(), outputDirname);
+  const fullOutputFilename = path.join(dirname, mainFile);
+  const folder = prepareName(slug, 'files');
+  const fullDirname = path.join(dirname, folder);
 
-const pageLoader = async (url, outputDir = process.cwd()) => {
-  const reqUrl = new URL(url);
-  const htmlFileName = makeName(reqUrl, 'html');
-  const filesDirName = makeName(reqUrl, 'files');
-
-  const htmlFilePath = path.resolve(outputDir, htmlFileName);
-  const filesDirPath = path.resolve(outputDir, filesDirName);
-
-  let neededLinks = null;
-
-  return axios
-    .get(url)
-    .then((res) => {
-      log('GET request -', reqUrl);
-      log('Response answer code -', res.status);
-      const { html, localLinks } = makeLinks(res.data, reqUrl, filesDirName);
-      neededLinks = localLinks;
-      log('Writing HTML file into -', htmlFilePath);
-      return fsp.writeFile(htmlFilePath, html);
+  let data;
+  const promise = axios
+    .get(pageUrl)
+    .then((response) => {
+      data = prepareData(url, folder, response.data);
+      log('create (if not exists) directory for assets', fullDirname);
+      return fs.access(fullDirname).catch(() => fs.mkdir(fullDirname));
     })
     .then(() => {
-      log('Make directory for assets -', filesDirPath);
-      return fsp.mkdir(filesDirPath);
+      log(`[${date()}] It was created the mainHtml`);
+      return fs.writeFile(fullOutputFilename, data.html);
     })
     .then(() => {
-      log('Downloading assets into -', filesDirPath);
-      const tasks = handleLinks(neededLinks, filesDirPath);
-      return tasks.run();
+      const tasks = data.items.map((filesList) =>
+        downloadData(fullDirname, filesList).catch(_.noop()),
+      );
+      return Promise.all(tasks);
     })
-    .then(() => ({ htmlFilePath }));
+    .then(() => ({ filepath: fullOutputFilename }));
+  log(`[${date()}] Successfully completed script ${mainFile}`);
+  return promise;
 };
 export default pageLoader;
