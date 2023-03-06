@@ -78,20 +78,19 @@ describe('positive tests for pageloader —', () => {
     const filesFolder = await fs.access(path.join(tmpFolder, actualFiles));
     const actual = await readCurrentFile(tmpFolder, actualHtml);
     expect(filesFolder).toBeUndefined();
-    console.log(actual);
     expect(actual).toEqual(expectedData);
   });
 
   test('without name folder', async () => {
     scope.get(data.uri).reply(200, htmlFile);
     await pageLoader(`${data.baseUrl}${data.uri}`);
-    console.log(
-      path.join(
-        process.cwd(),
-        actualFiles,
-        'ru-hexlet-io-assets-professions-nodejs.png',
-      ),
-    );
+    // console.log(
+    //   path.join(
+    //     process.cwd(),
+    //     actualFiles,
+    //     'ru-hexlet-io-assets-professions-nodejs.png',
+    //   ),
+    // );
     const actual = await readCurrentFile(
       path.join(process.cwd(), actualFiles),
       'ru-hexlet-io-assets-professions-nodejs.png',
@@ -123,8 +122,6 @@ describe('negative tests', () => {
   test('check with file system error', async () => {
     const failDir = '/fail_Dir';
     const file = getFixturePath('nodejs.png');
-    // const url = `${data.baseUrl}${data.uri}`;
-    // scope.get('/not-exist-page').reply(404, '');
     nock('http://my.url').get('/not-exist-page').reply(404, '');
     await expect(
       pageLoader('http://my.url/not-exist-page', failDir),
