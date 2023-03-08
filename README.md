@@ -8,6 +8,13 @@
    - `node .\bin\page-loader.js page-loader -o page https://ru.hexlet.io/courses`
    - `node bin/page-loader.js page-loader -o page https://ru.hexlet.io/courses`
 
+### Tests
+`npx jest
+`
+
+### DEBUG mode 'page-loader'
+`test:debug`
+
 ## Подсказки
 - Для работы с файлами, используйте https://nodejs.org/api/fs.html#fs_fs_promises_api
 - Тесты должны быть изолированы друг от друга. Для этого каждая загрузка должна выполняться в своей временной директории: await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-')); (в хуке beforeEach())

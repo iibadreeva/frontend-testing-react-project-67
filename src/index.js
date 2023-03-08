@@ -1,7 +1,7 @@
+/* linebreak-style: ["error", "windows"] */
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { URL } from 'url';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import _ from 'lodash';
 import path from 'path';
 import cheerio from 'cheerio';

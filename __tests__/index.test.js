@@ -129,5 +129,8 @@ describe('negative tests', () => {
     await expect(
       pageLoader('http://my.url/not-exist-page', file),
     ).rejects.toThrow();
+    // const url = `${data.baseUrl}${data.uri}`;
+    // await expect(pageLoader(url, failDir)).rejects.toThrow('ENOENT');
+    // await expect(pageLoader(url, file)).rejects.toThrow('ENOTDIR');
   });
 });

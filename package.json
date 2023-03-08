@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx jest",
     "test:debug": "DEBUG=nock.* npx jest",
+    "debug:axios": "DEBUG=axios; node ./bin/page-loader.js page-loader -o page https://ru.hexlet.io/courses",
     "lint": "eslint",
     "start:win": "node bin/page-loader.js page-loader -o page https://ru.hexlet.io/courses",
     "start:lin": "node .\\bin\\page-loader.js page-loader -o page https://ru.hexlet.io/courses"
@@ -53,5 +54,8 @@
     "nock": "^13.3.0",
     "prettier": "^2.8.4",
     "simple-git-hooks": "^2.8.1"
+  },
+  "optionalDependencies": {
+    "win-node-env": "^0.6.1"
   }
 }
