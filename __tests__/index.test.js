@@ -1,136 +1,100 @@
-import nock from 'nock';
+import * as fsp from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import nock from 'nock';
+
 import pageLoader from '../src/index.js';
+import { readFile, makeFileName } from '../src/utils.js';
 
-let data = '';
-let tmpFolder = '';
-let expectedData = '';
-let htmlFile = '';
+nock.disableNetConnect();
 
-const actualHtml = 'ru-hexlet-io-courses.html';
-const actualFiles = 'ru-hexlet-io-courses_files';
-const expectFile = 'after.html';
-const fakeFile = 'before.html';
-const scope = nock('https://ru.hexlet.io').persist();
+const fixDirname = '__fixtures__';
 
-const getFixturePath = (name) =>
-  path.join(__dirname, '..', '__fixtures__', name);
-const getFixtureContent = (name) => fs.readFile(getFixturePath(name), 'utf-8');
-const readCurrentFile = (pathName, name) =>
-  fs.readFile(path.join(pathName, name), 'utf-8');
+const baseUrl = 'https://ru.hexlet.io';
+const pagePath = '/courses';
+const pageUrl = `${baseUrl}${pagePath}`;
 
-const responseData = [
-  {
-    nameFile: 'nodejs.png',
-    pathFile: '/assets/professions/nodejs.png',
-    expectedFileName: 'ru-hexlet-io-assets-professions-nodejs.png',
-  },
-  {
-    nameFile: 'style.css',
-    pathFile: '/assets/application.css',
-    expectedFileName: 'ru-hexlet-io-assets-application.css',
-  },
-  {
-    nameFile: 'main.js',
-    pathFile: '/packs/js/runtime.js',
-    expectedFileName: 'ru-hexlet-io-packs-js-runtime.js',
-  },
-  {
-    nameFile: 'before.html',
-    pathFile: '/courses',
-    expectedFileName: 'ru-hexlet-io-courses.html',
-  },
-];
+const imgPathReq = '/assets/professions/nodejs.png';
+const scriptPathReq = '/packs/js/runtime.js';
+const stylePathReq = '/assets/application.css';
+const canonicalPathReq = '/courses';
 
-beforeAll(async () => {
-  nock.disableNetConnect();
-  htmlFile = await getFixtureContent(fakeFile);
-  expectedData = await getFixtureContent(expectFile);
-});
+const pageName = 'ru-hexlet-io-courses';
+const ext = '.html';
 
-afterAll(() => {
-  nock.enableNetConnect();
-});
+const filesDir = `${pageName}_files`;
+const imgName = 'ru-hexlet-io-assets-professions-nodejs.png';
+const scriptName = 'ru-hexlet-io-packs-js-runtime.js';
+const styleName = 'ru-hexlet-io-assets-application.css';
+const canonicalName = 'ru-hexlet-io-courses.html';
 
-beforeEach(async () => {
-  tmpFolder = await fs.mkdtemp(os.tmpdir());
-  data = {
-    baseUrl: 'https://ru.hexlet.io',
-    uri: '/courses',
-  };
-  responseData.forEach(async (items) =>
-    scope
-      .get(items.pathFile)
-      .reply(200, await getFixtureContent(items.nameFile)),
-  );
-});
+let tmpDirPath = '';
 
-afterEach(() => {
-  nock.cleanAll();
-});
-
-describe('positive tests for pageloader —', () => {
-  test('html replacement', async () => {
-    scope.get(data.uri).reply(200, htmlFile);
-    await pageLoader(`${data.baseUrl}${data.uri}`, tmpFolder);
-    const filesFolder = await fs.access(path.join(tmpFolder, actualFiles));
-    const actual = await readCurrentFile(tmpFolder, actualHtml);
-    expect(filesFolder).toBeUndefined();
-    expect(actual).toEqual(expectedData);
+describe('Loading File - Successful', () => {
+  beforeEach(async () => {
+    tmpDirPath = await fsp.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
   });
+  test('correctly loading in fixed output', async () => {
+    const testPage = await readFile(fixDirname, `${pageName}${ext}`, 'utf8');
+    const image = await readFile(fixDirname, `${filesDir}/${imgName}`);
+    const script = await readFile(fixDirname, `${filesDir}/${scriptName}`, 'utf8');
+    const style = await readFile(fixDirname, `${filesDir}/${styleName}`, 'utf8');
+    const canonical = await readFile(fixDirname, `${filesDir}/${canonicalName}`, 'utf8');
 
-  test('without name folder', async () => {
-    scope.get(data.uri).reply(200, htmlFile);
-    await pageLoader(`${data.baseUrl}${data.uri}`);
-    // console.log(
-    //   path.join(
-    //     process.cwd(),
-    //     actualFiles,
-    //     'ru-hexlet-io-assets-professions-nodejs.png',
-    //   ),
-    // );
-    const actual = await readCurrentFile(
-      path.join(process.cwd(), actualFiles),
-      'ru-hexlet-io-assets-professions-nodejs.png',
-    );
-    const expected = await getFixtureContent('nodejs.png');
-    expect(actual).toEqual(expected);
-  });
+    const htmlName = makeFileName(new URL(`${baseUrl}${pagePath}`));
+    const pngName = makeFileName(new URL(`${baseUrl}${imgPathReq}`));
+    expect(htmlName).toBe(`${pageName}${ext}`);
+    expect(pngName).toBe(imgName);
 
-  test.each(responseData)('check dependences files %s', async (item) => {
-    const filesFolder = path.join(tmpFolder, actualFiles);
-    scope.get(data.uri).reply(200, htmlFile);
-    await pageLoader(`${data.baseUrl}${data.uri}`, tmpFolder);
-    const expected = await getFixtureContent(item.nameFile);
-    const actualValue = await readCurrentFile(
-      filesFolder,
-      item.expectedFileName,
-    );
-    expect(actualValue).toEqual(expected);
+    nock(baseUrl)
+      .get(pagePath)
+      .reply(200, testPage)
+      .get(imgPathReq)
+      .reply(200, image)
+      .get(scriptPathReq)
+      .reply(200, script)
+      .get(stylePathReq)
+      .reply(200, style)
+      .get(canonicalPathReq)
+      .reply(200, canonical);
+
+    await pageLoader(pageUrl, tmpDirPath);
+
+    const expectedPage = await readFile(fixDirname, 'expected.html', 'utf8');
+    const actualPage = await readFile(tmpDirPath, `${pageName}${ext}`, 'utf8');
+    const downloadedImage = await readFile(tmpDirPath, `${filesDir}/${imgName}`);
+    const downloadedScript = await readFile(tmpDirPath, `${filesDir}/${scriptName}`, 'utf8');
+    const downloadedStyle = await readFile(tmpDirPath, `${filesDir}/${styleName}`, 'utf8');
+    const downloadedCanonical = await readFile(tmpDirPath, `${filesDir}/${canonicalName}`, 'utf8');
+
+    expect(actualPage).toEqual(expectedPage);
+    expect(downloadedImage).toEqual(image);
+    expect(downloadedScript).toEqual(script);
+    expect(downloadedStyle).toEqual(style);
+    expect(downloadedCanonical).toEqual(canonical);
   });
 });
 
-describe('negative tests', () => {
-  test.each([404, 500])('server drop with code %s', async (code) => {
-    const url = `${data.baseUrl}${data.uri}`;
-    scope.get(data.uri).reply(code, htmlFile);
-    await expect(pageLoader(url, tmpFolder)).rejects.toThrow(new RegExp(code));
+describe('Loading File - Negative', () => {
+  test('bad request', async () => {
+    nock('http://my.url')
+      .get('/not-exist-page')
+      .reply(404, '');
+    await expect(pageLoader('http://my.url/not-exist-page', tmpDirPath)).rejects.toThrow();
   });
 
-  test('check with file system error', async () => {
-    const failDir = '/fail_Dir';
-    const file = getFixturePath('nodejs.png');
-    nock('http://my.url').get('/not-exist-page').reply(404, '');
-    await expect(
-      pageLoader('http://my.url/not-exist-page', failDir),
-    ).rejects.toThrow();
-    await expect(
-      pageLoader('http://my.url/not-exist-page', file),
-    ).rejects.toThrow();
-    // const url = `${data.baseUrl}${data.uri}`;
-    // await expect(pageLoader(url, failDir)).rejects.toThrow('ENOENT');
-    // await expect(pageLoader(url, file)).rejects.toThrow('ENOTDIR');
+  test('bad url', async () => {
+    nock('http:/my.url')
+      .get(pagePath)
+      .reply(404, '');
+    await expect(pageLoader('http:/my.url/not-exist-page', tmpDirPath)).rejects.toThrow();
+  });
+
+  test('output path not exist', async () => {
+    nock(baseUrl)
+      .get(pagePath)
+      .reply(200, 'data');
+
+    await expect(pageLoader(pageUrl, 'notExixstPath')).rejects.toThrow('no such file or directory');
   });
 });

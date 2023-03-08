@@ -6,11 +6,7 @@ const mapForNames = {
   files: '_files',
 };
 
-const formatName = (name) =>
-  name
-    .split(/[^А-яA-z0-9]/g)
-    .filter((i) => i)
-    .join('-');
+const formatName = (name) => name.split(/[^А-яA-z0-9]/g).filter((i) => i).join('-');
 
 export const makeName = (url, type) => {
   const newName = formatName(`${url.host}${url.pathname}`);
@@ -23,5 +19,7 @@ export const makeFileName = (url) => {
   return ext ? `${newName}${ext}` : `${newName}.html`;
 };
 
-export const readFile = (pathName, fileName = '', encoding = null) =>
-  fsp.readFile(path.resolve(pathName, fileName), encoding);
+export const readFile = (pathName, fileName = '', encoding = null) => {
+  const file = fsp.readFile(path.resolve(pathName, fileName), encoding);
+  return file;
+};

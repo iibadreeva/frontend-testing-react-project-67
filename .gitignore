@@ -1,4 +1,6 @@
 /node_modules/
-/*.log/
-covarage
-.idea/
+*.log
+coverage/
+.DS_Store
+/.vscode/
+/tmp/

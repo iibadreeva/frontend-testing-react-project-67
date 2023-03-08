@@ -1,17 +1,25 @@
 #!/usr/bin/env node
-/* linebreak-style: ["error", "windows"] */
 
 import { program } from 'commander';
-import process from 'process';
 import pageLoader from '../src/index.js';
 
 program
-  .command('page-loader')
-  .version('1.0.0')
-  .description('Page download')
-  .arguments('<url>', 'url source')
-  .option('-o, --output [dirPath]', 'output directory', process.cwd())
-  .action(async (url, options) => {
-    console.log(await pageLoader(url, options.output));
-  })
-  .parse(process.argv);
+  .name('page-loader')
+  .version('1.0.0', '-v, --version', 'output the version number')
+  .description('Load the page from url')
+  .helpOption('-h, --help', 'output usage information')
+  .option('-o, --output [pathToFile]', 'output path to file', process.cwd())
+  .arguments('<url>')
+  .action((url, option) => {
+    pageLoader(url, option.output)
+      .then(({ filepath }) => {
+        console.log(filepath);
+      })
+      .catch((err) => {
+        console.error(err.toString());
+        process.exit(1);
+      });
+  });
+program.parse(process.argv);
+
+// npx babel-node bin/page-loader -o ./__fixtures__ https://ru.hexlet.io/courses

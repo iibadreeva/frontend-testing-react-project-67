@@ -2,7 +2,7 @@
   "name": "@hexlet/code",
   "version": "1.0.0",
   "description": "page loader",
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
     "test": "npx jest",
     "test:debug": "DEBUG=nock.* npx jest",
@@ -24,6 +24,11 @@
     "page-loader": "bin/page-loader.js"
   },
   "type": "module",
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {},
+    "verbose": true
+  },
   "simple-git-hooks": {
     "pre-commit": "npx eslint ."
   },
@@ -35,6 +40,7 @@
     "commander": "^10.0.0",
     "debug": "^4.3.4",
     "listr": "^0.14.3",
+    "lodash": "^4.17.21",
     "page-loader": "^1.2.0"
   },
   "devDependencies": {
